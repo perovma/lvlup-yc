@@ -1,0 +1,80 @@
+pipeline {
+    agent any
+    stages {
+        stage ('Docker login') {
+            steps {
+               withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'dockerKey', usernameVariable: 'dockerUser')]) {
+                    sh label: 'Login to docker registry', 
+                       script: 'docker login --username $dockerUser --password $dockerKey'
+                }
+            }
+        }        
+        stage('Build docker image') {
+            steps {
+                script {
+                    sh label: 'Push to docker registry', 
+                    script: '''
+                    #docker stop $(docker ps -a -q)
+                    #docker rm $(docker ps -a -q)
+                    #docker rmi $(docker images -q) -f
+                    ls
+                    cd app
+                    sudo buildah push `sudo buildah bud -f ./Dockerfile . 2>&1 | tail -n1` docker-daemon:app:v1
+                    '''
+                }
+            }
+        }
+        stage('Push into Docker Hub') {
+            steps {
+                sh label: 'Push to docker registry', 
+                   script: '''
+                            docker tag app:v1 northernmerlin/app:v1
+                            docker push northernmerlin/app:v1
+                    '''
+            }
+        }
+        stage ('Docker logout') {
+            steps {
+                sh label: 'Logout from docker registry', 
+                   script: 'docker logout'
+            }
+        }
+        stage ('Deploy app into k8s') {
+            steps {
+                sh label: 'k8s deploy app', 
+                   script: '''
+                        cd app
+                        kubectl replace -f deployment.yaml
+                        kubectl replace -f service.yaml
+                        kubectl replace -f ingress.yaml
+                        kubectl replace -f acme-issuer.yaml
+                        kubectl replace -f certbot.yaml
+                    '''
+            }
+        }
+        stage ('Deploy info') {
+            steps {
+                sh label: 'k8s info', 
+                   script: '''        
+                        echo "kubectl get nodes -o wide"
+                        kubectl get nodes -o wide
+                        echo ""
+                        echo "kubectl get pod -o wide"
+                        kubectl get pod -o wide
+                        echo ""
+                        echo "kubectl get svc -o wide"
+                        kubectl get svc -o wide
+                        echo ""
+                        echo "kubectl get svc --all-namespaces"
+                        kubectl get svc --all-namespaces
+                        echo ""
+                        echo "kubectl get ingress"
+                        kubectl get ingress
+                        echo ""
+                        echo "kubectl describe svc app"
+                        kubectl describe svc app
+                    '''
+            }
+        }        
+    }
+}
