@@ -8,14 +8,14 @@ metadata:
 spec:
   tls:
     - hosts:
-      - app.benderit.ru
+      - app.mperov.yandexcloud.net
       secretName: letsencrypt-app
   tls:
     - hosts:
-      - benderit.ru
+      - mperov.yandexcloud.net
       secretName: letsencrypt
   rules:
-    - host: benderit.ru
+    - host: mperov.yandexcloud.net
       http:
         paths:
         - path: /

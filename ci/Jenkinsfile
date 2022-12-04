@@ -12,14 +12,14 @@ pipeline {
         stage('Build docker image') {
             steps {
                 script {
-                    sh label: 'Push to docker registry', 
+                    sh label: 'Build an image', 
                     script: '''
                     #docker stop $(docker ps -a -q)
                     #docker rm $(docker ps -a -q)
                     #docker rmi $(docker images -q) -f
                     ls
                     cd app
-                    sudo buildah push `sudo buildah bud -f ./Dockerfile . 2>&1 | tail -n1` docker-daemon:app:v1
+                    docker build -t app:v1 -f ./Dockerfile .
                     '''
                 }
             }
@@ -43,12 +43,13 @@ pipeline {
             steps {
                 sh label: 'k8s deploy app', 
                    script: '''
+                        yc managed-kubernetes cluster get-credentials lvlup-k8s --internal --force
                         cd app
-                        kubectl replace -f deployment.yaml
-                        kubectl replace -f service.yaml
-                        kubectl replace -f ingress.yaml
-                        kubectl replace -f acme-issuer.yaml
-                        kubectl replace -f certbot.yaml
+                        kubectl apply -f deployment.yaml
+                        kubectl apply -f service.yaml
+                        kubectl apply -f ingress.yaml
+                        kubectl apply -f acme-issuer.yaml
+                        kubectl apply -f certbot.yaml
                     '''
             }
         }
